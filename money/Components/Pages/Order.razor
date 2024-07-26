@@ -1,0 +1,36 @@
+﻿@page "/order-summary"
+@inject DatabaseService DbService
+@inject NavigationManager navigationManager
+<h3>订单统计</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>订单分组</th>
+            <th>总量</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var summary in orderSummaries)
+        {
+            <tr>
+                <td>@summary.OrderGroup</td>
+                <td>@summary.TotalAmount</td>
+            </tr>
+        }
+    </tbody>
+</table>
+<button @onclick="Back">返回</button>
+
+@code {
+    private List<OrderSummary> orderSummaries = new List<OrderSummary>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        orderSummaries = await DbService.GetTodayOrderSummariesAsync();
+    }
+    private void Back()
+    {
+        navigationManager.NavigateTo("/");
+    }
+}

@@ -1,0 +1,37 @@
+﻿@page "/daily-consumption"
+@inject DatabaseService DbService
+@inject NavigationManager navigationManager
+<h3>每日消耗统计</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>用户名</th>
+            <th>消耗金额</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var record in dailyConsumptions)
+        {
+                <tr>
+                    <td>@record.Username</td>
+                    <td>@record.Consumption</td>
+                </tr>
+        }
+    </tbody>
+</table>
+<button @onclick="Back">返回</button>
+@code {
+    private List<DailyConsumption> dailyConsumptions = new List<DailyConsumption>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        dailyConsumptions = await DbService.GetTodayDailyConsumptionsAsync();
+    }
+
+    private void Back()
+    {
+        navigationManager.NavigateTo("/");
+    }
+
+}

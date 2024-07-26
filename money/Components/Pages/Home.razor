@@ -1,0 +1,230 @@
+﻿@page "/"
+@inject DatabaseService DbService
+@inject NavigationManager navigationManager
+<style>
+    table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse; /* 合并边框 */
+    }
+    th, td {
+        text-align: left;
+        padding: 8px;
+        border: 1px solid #ddd; /* 添加边框 */
+    }
+    thead th {
+        background-color: #f4f4f4; /* 为表头添加背景色 */
+    }
+    td input {
+        width: 100%;
+        box-sizing: border-box;
+
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; width: 100%;">
+    <table class="table" style="flex: 0 0 50%;">
+        <thead>
+            <tr>
+                <th>用户名</th>
+                <th>订单</th>
+                <th>金额</th>
+                <th>本次结算</th>
+                <th>合计</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                int index = 0;
+            }
+            @foreach (var item in userTotals)
+            {
+                if (index % 2 == 0)
+                {
+                            <tr>
+                                <td>
+                                            <input @bind="item.Username" @onblur="SaveDataOnBlur" />
+                                </td>
+                                <td>
+                                            <input @bind="item.Order" type="number" @onblur="SaveDataOnBlur" />
+                                </td>
+                                <td>
+                                            <input @bind="item.Amount" type="number" @onblur="SaveDataOnBlur" />
+                                </td>
+                                <td>
+                                            <input @bind="item.Settlement" type="number" @onblur="SaveDataOnBlur" />
+                                </td>
+                                <td>
+                                    <input value="@item.Total" type="number" disabled />
+                                </td>
+                            </tr>
+                }
+                index++;
+            }
+        </tbody>
+    </table>
+    <table class="table" style="flex: 0 0 50%;">
+        <thead>
+            <tr>
+                <th>用户名</th>
+                <th>订单</th>
+                <th>金额</th>
+                <th>本次结算</th>
+                <th>合计</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                int index1 = 0;
+            }
+            @foreach (var item in userTotals)
+            {
+                if (index1 % 2 != 0)
+                {
+                            <tr>
+                                <td>
+                                            <input @bind="item.Username" @onblur="SaveDataOnBlur" />
+                                </td>
+                                <td>
+                                            <input @bind="item.Order" type="number"  @onblur="SaveDataOnBlur"/>
+                                </td>
+                                <td>
+                                            <input @bind="item.Amount" type="number" @onblur="SaveDataOnBlur"/>
+                                </td>
+                                <td>
+                                            <input @bind="item.Settlement" type="number" @onblur="SaveDataOnBlur"/>
+                                </td>
+                                <td>
+                                    <input value="@item.Total" type="number" disabled />
+                                </td>
+                            </tr>
+                }
+                index1++;
+            }
+        </tbody>
+    </table>
+</div>
+
+<button @onclick="AddNewRow">新增一行</button>
+<button @onclick="Start">开始</button>
+<button @onclick="SaveData">结束</button>
+<div>
+<table>
+    <thead>
+        <tr>
+            <th>1、3、5总和</th>
+            <th>2、4、6总和</th>
+            <th>1、3、5 - 2、4、6 两者相差数</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>@ALL135</td>
+            <td>@ALL246</td>
+            <td>@Difference</td>
+        </tr>
+    </tbody>
+</table>
+</div>
+
+@code {
+    private List<UserTotal> userTotals = new List<UserTotal>();
+    private decimal ALL135 = 0;
+    private decimal ALL246 = 0;
+    private decimal Difference = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        userTotals = await DbService.GetUserTotalsAsync();
+        // 不足二十条补足到20
+        while (userTotals.Count < 20)
+        {
+            userTotals.Add(new UserTotal
+                {
+                    Username = string.Empty,
+                    Order = string.Empty,
+                    Amount = string.Empty,
+                    Settlement = string.Empty,
+                    Total = 0
+                });
+        }
+    }
+
+    private void Start()
+    {
+        foreach (var item in userTotals)
+        {
+            item.Order = string.Empty;
+            item.Amount = string.Empty;
+            item.Settlement = string.Empty;
+        }
+    }
+
+    private async Task SaveData()
+    {
+        var modificationRecords = new List<ModificationRecord>();
+
+        foreach (var item in userTotals)
+        {
+            decimal settlement = 0;
+            if (decimal.TryParse(item.Settlement, out settlement))
+            {
+                item.Total += settlement;
+
+                var modificationRecord = new ModificationRecord
+                    {
+                        Username = item.Username,
+                        Order = item.Order.ToString(),
+                        Amount = decimal.Parse(item.Amount),
+                        Settlement = decimal.Parse(item.Settlement)
+                    };
+
+                modificationRecords.Add(modificationRecord);
+                if (item.Order.Trim() == "1" || item.Order.Trim() == "3" || item.Order.Trim() == "5")
+                {
+                    ALL135 += decimal.Parse(item.Settlement);
+                }
+                else if (item.Order.Trim() == "2" || item.Order.Trim() == "4" || item.Order.Trim() == "6")
+                {
+                    ALL246 += decimal.Parse(item.Settlement);
+                }
+
+                Difference = ALL135 - ALL246;
+            }
+        }
+        try
+        {
+            await DbService.SaveDataWithTransactionAsync(userTotals, modificationRecords);
+        }
+        catch (Exception ex)
+        {
+            // 记录错误日志
+            Console.WriteLine($"Exception in SaveData: {ex.Message}");
+            // 可以考虑展示用户友好的错误信息
+        }
+    }
+    private async Task SaveDataOnBlur(FocusEventArgs e)
+    {
+        try
+        {
+            await DbService.SaveDataWithTransactionAsync(userTotals, new List<ModificationRecord>());
+        }
+        catch (Exception ex)
+        {
+            // 记录错误日志
+            Console.WriteLine($"Exception in SaveData: {ex.Message}");
+            // 可以考虑展示用户友好的错误信息
+        }
+    }
+    private void AddNewRow()
+    {
+        userTotals.Add(new UserTotal
+            {
+                Username = string.Empty,
+                Order = string.Empty,
+                Amount = string.Empty,
+                Settlement = string.Empty,
+                Total = 0
+            });
+    }
+}
