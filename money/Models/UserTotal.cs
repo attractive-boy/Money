@@ -10,4 +10,7 @@ public class UserTotal
     public string Order { get; set; }
     public string Amount { get; set; }
     public string Settlement { get; set; }
+
+    [Ignore]
+    public bool IsEditable { get; set; } = false; // 标记输入框是否可编辑
 }
