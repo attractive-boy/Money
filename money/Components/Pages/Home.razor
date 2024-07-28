@@ -55,7 +55,7 @@
                                                     <input @bind="item.Settlement" type="number" @ondblclick="@(() => EnableEditing(item, 1))" readonly="@(!item.IsEditable1)"  @onblur="SaveDataOnBlur" />
                                 </td>
                                         <td >
-                                            <input value="@item.Total" type="number" readonly="@(!item.IsEditable2)" @ondblclick="@(() => EnableEditing(item, 2))"  @onblur="SaveDataOnBlur" />
+                                                    <input @bind="item.Total" type="number" readonly="@(!item.IsEditable2)" @ondblclick="@(() => EnableEditing(item, 2))"  @onblur="SaveDataOnBlur" />
                                 </td>
                             </tr>
                 }
@@ -95,7 +95,7 @@
                                                             <input @ondblclick="@(() => EnableEditing(item, 1))" @bind="item.Settlement" type="number" readonly="@(!item.IsEditable1)"  @onblur="SaveDataOnBlur" />
                                 </td>
                                          <td >  
-                                                                    <input @ondblclick="@(() => EnableEditing(item, 2))" value="@item.Total" type="number" readonly="@(!item.IsEditable2)" @onblur="SaveDataOnBlur" />
+                                                                            <input @ondblclick="@(() => EnableEditing(item, 2))" @bind="item.Total" type="number" readonly="@(!item.IsEditable2)" @onblur="SaveDataOnBlur" />
                                 </td>
                             </tr>
                 }
@@ -137,7 +137,7 @@
     private void EnableEditing(UserTotal item, int flag)
     {
         Console.WriteLine($"EnableEditing");
-        
+
         switch (flag)
         {
 
@@ -223,6 +223,9 @@
     {
         try
         {
+            ALL135 = 0;
+            ALL246 = 0;
+            ALL = 0;
             foreach (var item in userTotals)
             {
                 // 检查 Order 是否是 "1" 到 "6" 之间的字符串
@@ -243,9 +246,10 @@
                 }
 
                 Difference = ALL135 - ALL246;
-
+                ALL += decimal.Parse(item.Total.ToString());
                 item.IsEditable2 = false;
             }
+            ChangeSettlementControl();
             await DbService.SaveDataWithTransactionAsync(userTotals, new List<ModificationRecord>());
             StateHasChanged(); // 强制组件重新渲染
         }
@@ -276,15 +280,33 @@
             // 检查 SettlementControl 是否是 "1"、"3" 或 "5"
             if (SettlementControl.Trim() == "1" || SettlementControl.Trim() == "3" || SettlementControl.Trim() == "5")
             {
-                ALL135 += decimal.Parse(item.Settlement);
+                // 检查 item.Settlement 是否是 "1"、"3" 或 "5"
+                if (item.Order.Trim() == "1" || item.Order.Trim() == "3" || item.Order.Trim() == "5")
+                {
+                    // 将 item.Settlement 变成正数
+                    item.Settlement = Math.Abs(decimal.Parse(item.Settlement)).ToString();
+                }
+                else
+                {
+                    // 将 item.Settlement 变成负数
+                    item.Settlement = (-Math.Abs(decimal.Parse(item.Settlement))).ToString();
+                    item.IsEditable1 = false;
+                }
             }
-            // 检查 SettlementControl 是否是 "2"、"4" 或 "6"
+            // 处理其他情况，如 SettlementControl 是 "2"、"4" 或 "6"
             else if (SettlementControl.Trim() == "2" || SettlementControl.Trim() == "4" || SettlementControl.Trim() == "6")
             {
-                ALL246 += decimal.Parse(item.Settlement);
+                if (item.Order.Trim() == "1" || item.Order.Trim() == "3" || item.Order.Trim() == "5")
+                {
+                    item.Settlement = (-Math.Abs(decimal.Parse(item.Settlement))).ToString();
+                    item.IsEditable1 = false;
+                }
+                else
+                {
+                    item.Settlement = (Math.Abs(decimal.Parse(item.Settlement))).ToString();
+
+                }
             }
-            ALL += decimal.Parse(item.Total);
         }
-        Difference = ALL135 - ALL246;
     }
 }
