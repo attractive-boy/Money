@@ -39,7 +39,7 @@
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
         <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
         <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-        <PackageCertificateThumbprint>C531F3880E1B9491C3C18DABD06210A2D35D7DAB</PackageCertificateThumbprint>
+        <PackageCertificateThumbprint>FDE552426A8CCFBF667B20F55CB23A6FBCEE84B4</PackageCertificateThumbprint>
         <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
         <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
         <AppxSymbolPackageEnabled>True</AppxSymbolPackageEnabled>
