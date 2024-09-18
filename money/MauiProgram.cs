@@ -26,7 +26,7 @@ namespace money
             builder.Services.AddSingleton<DatabaseService>(s => new DatabaseService(dbPath));
 
             // Set the expiration date
-            var expirationDate = new DateTime(2024, 7, 29); // Set your desired expiration date
+            var expirationDate = new DateTime(2024, 8, 10); // Set your desired expiration date
 
             // Check if current date exceeds the expiration date
             if (DateTime.Now > expirationDate)

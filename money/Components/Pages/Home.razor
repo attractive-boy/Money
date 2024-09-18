@@ -2,6 +2,8 @@
 @inject DatabaseService DbService
 @inject NavigationManager navigationManager
 
+@inject IJSRuntime JS
+
 <style>
     table {
         width: 100%;
@@ -19,7 +21,13 @@
     td input {
         width: 100%;
         box-sizing: border-box;
+        border:none;
     }
+
+    td {
+        padding:0 !important;
+    }
+    td
 </style>
 
 <div style="display: flex; justify-content: space-between; width: 100%;">
@@ -43,7 +51,7 @@
                 {
                             <tr>
                                 <td>
-                                    <input @bind="item.Username" @onblur="SaveDataOnBlur" />
+                                            <input @bind="item.Username" @onblur="SaveDataOnBlur"  @ondblclick="@(() => DeleteRow(item))"/>
                                 </td>
                                 <td>
                                     <input @bind="item.Order" type="number" @onblur="SaveDataOnBlur" />
@@ -83,7 +91,7 @@
                 {
                             <tr>
                                 <td>
-                                    <input @bind="item.Username" @onblur="SaveDataOnBlur" />
+                                            <input @bind="item.Username" @onblur="SaveDataOnBlur" @ondblclick="@(() => DeleteRow(item))" />
                                 </td>
                                 <td>
                                     <input @bind="item.Order" type="number" @onblur="SaveDataOnBlur" />
@@ -108,16 +116,16 @@
 <button @onclick="AddNewRow">新增一行</button>
 <button @onclick="Start">开始</button>
 <button @onclick="SaveData">结束</button>
-<input @bind="SettlementControl" type="number" @onblur="SaveDataOnBlur" />
+<input style="width:50px" @bind="SettlementControl" type="number" @onblur="SaveDataOnBlur" />
 <div>
-    <table style="font-size:20px">
+    <table style="margin-top:10px">
         <tbody>
             <tr>
                 <td>1、3、5总和</td>
                 <td>@ALL135</td>
                 <td>2、4、6总和</td>
                 <td>@ALL246</td>
-                <td style="width:100px">1、3、5 - 2、4、6 两者相差数</td>
+                <td>两者相差数</td>
                 <td>@Difference</td>
                 <td>总计</td>
                 <td>@ALL</td>
@@ -133,6 +141,8 @@
     private decimal Difference = 0;
     private decimal ALL = 0;
     private string SettlementControl = string.Empty;
+    private bool IsOnblur = false;
+    private bool canEnd = true;
 
     private void EnableEditing(UserTotal item, int flag)
     {
@@ -140,10 +150,8 @@
 
         switch (flag)
         {
-
             case 1:
                 item.IsEditable1 = true;
-                item.Total = flag;
                 break;
             case 2:
                 item.IsEditable2 = true;
@@ -167,6 +175,7 @@
                     Total = 0
                 });
         }
+        await SaveDataOnBlur(null);
     }
 
     private void Start()
@@ -177,46 +186,50 @@
             item.Amount = string.Empty;
             item.Settlement = string.Empty;
         }
+        SettlementControl = string.Empty;
+        canEnd = true;
     }
 
     private async Task SaveData()
     {
+        if (!canEnd) return;
         var modificationRecords = new List<ModificationRecord>();
-
-        foreach (var item in userTotals)
-        {
-            decimal settlement = 0;
-            if (decimal.TryParse(item.Settlement, out settlement))
-            {
-                item.Total += settlement;
-                // 使用 TryParse 尝试解析 Amount 和 Settlement，如果解析失败，设置为 0
-                decimal amount;
-                if (!decimal.TryParse(item.Amount, out amount))
-                {
-                    amount = 0;
-                }
-
-                var modificationRecord = new ModificationRecord
-                    {
-                        Username = item.Username,
-                        Order = item.Order.ToString(),
-                        Amount = amount,
-                        Settlement = decimal.Parse(item.Settlement)
-                    };
-
-                modificationRecords.Add(modificationRecord);
-            }
-        }
+        /* 等待按钮执行完成后 */
+        IsOnblur = true;
         try
         {
-            await DbService.SaveDataWithTransactionAsync(userTotals, modificationRecords);
-        }
-        catch (Exception ex)
+            foreach (var item in userTotals)
+            {
+                decimal settlement = 0;
+                if (decimal.TryParse(item.Settlement, out settlement))
+                {
+                    item.Total += settlement;
+                    // 使用 TryParse 尝试解析 Amount 和 Settlement，如果解析失败，设置为 0
+                    decimal amount;
+                    if (!decimal.TryParse(item.Amount, out amount))
+                    {
+                        amount = 0;
+                    }
+
+                    /* var modificationRecord = new ModificationRecord
+                            {
+                            Username = item.Username,
+                            Order = item.Order.ToString(),
+                            Amount = amount,
+                            Settlement = decimal.Parse(item.Settlement)
+                    };
+
+                    modificationRecords.Add(modificationRecord); */
+                }
+            }
+        }catch (Exception e)
         {
-            // 记录错误日志
-            Console.WriteLine($"Exception in SaveData: {ex.Message}");
-            // 可以考虑展示用户友好的错误信息
+
         }
+
+        SaveDataOnBlur(null);
+        IsOnblur = false;
+        canEnd = false;
     }
 
     private async Task SaveDataOnBlur(FocusEventArgs e)
@@ -238,11 +251,15 @@
 
                 if (item.Order.Trim() == "1" || item.Order.Trim() == "3" || item.Order.Trim() == "5")
                 {
-                    ALL135 += decimal.Parse(item.Settlement);
+                    decimal amount = 0;
+                    _ =decimal.TryParse(item.Amount,out amount);
+                    ALL135 += amount;
                 }
                 else if (item.Order.Trim() == "2" || item.Order.Trim() == "4" || item.Order.Trim() == "6")
                 {
-                    ALL246 += decimal.Parse(item.Settlement);
+                    decimal amount = 0;
+                    _ = decimal.TryParse(item.Amount, out amount);
+                    ALL246 += amount;
                 }
 
                 Difference = ALL135 - ALL246;
@@ -261,8 +278,9 @@
         }
     }
 
-    private void AddNewRow()
+    private async void AddNewRow()
     {
+        await Task.Delay(1000);
         userTotals.Add(new UserTotal
             {
                 Username = string.Empty,
@@ -271,6 +289,35 @@
                 Settlement = string.Empty,
                 Total = 0
             });
+        userTotals.Add(new UserTotal
+            {
+                Username = string.Empty,
+                Order = string.Empty,
+                Amount = string.Empty,
+                Settlement = string.Empty,
+                Total = 0
+            });
+    }
+    private async Task DeleteRow(UserTotal item)
+    {
+        string v = $"确认删除用户 {item.Username} 吗?";
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", v);
+        if (confirmed)
+        {
+            userTotals.Remove(item);
+
+            userTotals.Add(new UserTotal
+                {
+                    Username = string.Empty,
+                    Order = string.Empty,
+                    Amount = string.Empty,
+                    Settlement = string.Empty,
+                    Total = 0
+                });
+
+            await DbService.DeleteUserTotalAsync(item);
+        }
+
     }
 
     private void ChangeSettlementControl()
@@ -283,14 +330,29 @@
                 // 检查 item.Settlement 是否是 "1"、"3" 或 "5"
                 if (item.Order.Trim() == "1" || item.Order.Trim() == "3" || item.Order.Trim() == "5")
                 {
-                    // 将 item.Settlement 变成正数
-                    item.Settlement = Math.Abs(decimal.Parse(item.Settlement)).ToString();
+                    try
+                    {
+                        // 将 item.Settlement 变成正数
+                        item.Settlement = Math.Abs(decimal.Parse(item.Amount)).ToString();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
                 }
                 else
                 {
-                    // 将 item.Settlement 变成负数
-                    item.Settlement = (-Math.Abs(decimal.Parse(item.Settlement))).ToString();
-                    item.IsEditable1 = false;
+                    try
+                    {
+                        // 将 item.Settlement 变成负数
+                        item.Settlement = (-Math.Abs(decimal.Parse(item.Amount))).ToString();
+                        item.IsEditable1 = false;
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
                 }
             }
             // 处理其他情况，如 SettlementControl 是 "2"、"4" 或 "6"
@@ -298,15 +360,32 @@
             {
                 if (item.Order.Trim() == "1" || item.Order.Trim() == "3" || item.Order.Trim() == "5")
                 {
-                    item.Settlement = (-Math.Abs(decimal.Parse(item.Settlement))).ToString();
-                    item.IsEditable1 = false;
+                    try
+                    {
+                        item.Settlement = (-Math.Abs(decimal.Parse(item.Amount))).ToString();
+                        item.IsEditable1 = false;
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
                 }
                 else
                 {
-                    item.Settlement = (Math.Abs(decimal.Parse(item.Settlement))).ToString();
+                    try
+                    {
+                        item.Settlement = (Math.Abs(decimal.Parse(item.Amount))).ToString();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
 
                 }
             }
         }
+        SettlementControl = string.Empty;
     }
 }

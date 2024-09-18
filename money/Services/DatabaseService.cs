@@ -60,6 +60,11 @@ public class DatabaseService
         });
     }
 
+    public async Task<int> DeleteUserTotalAsync(UserTotal user)
+    {
+        return await _database.DeleteAsync(user);
+    }   
+
     public async Task<List<DailyConsumption>> GetTodayDailyConsumptionsAsync()
     {
         var query = @$"
